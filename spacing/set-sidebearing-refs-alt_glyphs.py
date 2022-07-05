@@ -1,4 +1,5 @@
-"""
+#MenuTitle: Set side refs for alt glyphs
+__doc__="""
 	Apply metrics keys to alt glyphs.active.
 
 	Can be useful as a shortcut in e.g. a "handwriting" font for comics.
