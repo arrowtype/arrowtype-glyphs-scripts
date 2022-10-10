@@ -10,7 +10,8 @@ __doc__="""
 # Configurable pattern. By default, this will put glyphs between nn and oo
 # Remove leading slashes and trailing spaces if you instead want to proof characters (not just glyph names), especially for InDesign, etc.
 # Add "\\n" at the end of your pattern if you want your output to include newlines, e.g. for the RoboFont space center
-# pattern = "nn/$1 nono/$1 oo"
+# pattern = "HH /$1  HOHO /$1  OO" # for zero-width combining accents
+# pattern = "nn/$1 nono/$1 oo" # lowercase only
 pattern = "HH/$1 HOHO/$1 OO\nnn/$1 nono/$1 oo"
 
 # If you want to change the way each pattern is separated, change this. It adds a basic newline (`\n`) by default.
