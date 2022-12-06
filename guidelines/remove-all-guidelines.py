@@ -1,4 +1,4 @@
-#MenuTitle: Set cap-height-centered guide (horizontal)
+#MenuTitle: Remove all guidelines from selected glyphs
 __doc__="""
 	Remove all (non-global) guidlines from the current or selected glyphs.
 """
