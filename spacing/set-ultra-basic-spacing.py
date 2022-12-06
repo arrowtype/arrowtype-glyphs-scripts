@@ -10,3 +10,8 @@ myLayers = Glyphs.font.selectedLayers
 for layer in myLayers:
     layer.LSB = 60
     layer.RSB = 60
+
+# repeating this to maybe correct for accents that start as zero-width glyphs
+for layer in myLayers:
+    layer.LSB = 60
+    layer.RSB = 60
