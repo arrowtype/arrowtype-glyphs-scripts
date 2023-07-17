@@ -1,10 +1,14 @@
-#MenuTitle: Monospace selected glyphs (equal to width of /n)
+#MenuTitle: Monospace selected glyphs (equal to width of n)
 __doc__="""
 	Sets selected glyphs to the same width as n, then matches the left & right sidebearings.
 """
 
 
+document = Glyphs.currentDocument
+
 myLayers = Glyphs.font.selectedLayers
+
+print(document.font["n"].layers[0])
 
 width = document.font["n"].layers[0].width
 
