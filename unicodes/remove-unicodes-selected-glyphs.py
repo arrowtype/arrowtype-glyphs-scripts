@@ -3,7 +3,6 @@ __doc__ = """
 	Removes Unicode values from selected glyphs
 """
 
-
 font = Glyphs.font
 myLayers = Glyphs.font.selectedLayers
 
