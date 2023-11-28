@@ -1,5 +1,5 @@
-#MenuTitle: Make tab with spacing string for selected glyphs
-__doc__="""
+# MenuTitle: Make tab with spacing string for selected glyphs
+__doc__ = """
     A simple way to make an arbitrary spacing string.
 
     Open in a code editor to adjust!
@@ -27,6 +27,15 @@ myLayers = Glyphs.font.selectedLayers
 # The code part. This goes through selected glyphs and outputs a proofing list.
 for layer in myLayers:
     name = layer.parent.name
-    text += pattern.replace("$1",name) + separator
+
+    if ".sc" in name:
+        smallCapPattern = (
+            "HH/$1 HOHO/$1 OO\n/H.sc /H.sc /$1 /H.sc /O.sc /H.sc /O.sc /$1 /O.sc /O.sc"
+        )
+        text += smallCapPattern.replace("$1", name) + separator
+
+    else:
+        text += pattern.replace("$1", name) + separator
+
 
 font.newTab(text)
