@@ -1,8 +1,8 @@
-# MenuTitle: Make tab with fraction spacing string
+# MenuTitle: Make tab with bigger fraction spacing string
 __doc__ = """
     A simple way to make a fraction spacing string.
 
-    Assumes name /fraction and /one.numr /two.dnom etc.
+    Assumes name /fraction and /one.numr /two.dnom, etc, exist.
 
     Open in a code editor to adjust!
 """
@@ -14,7 +14,7 @@ __doc__ = """
 # Add "\\n" at the end of your pattern if you want your output to include newlines, e.g. for the RoboFont space center
 # pattern = "HH /$1  HOHO /$1  OO" # for zero-width combining accents
 # pattern = "nn/$1 nono/$1 oo" # lowercase only
-pattern = "HH$1 HOHO$1 OO"
+pattern = "H$1 H"
 
 # If you want to change the way each pattern is separated, change this. It adds a basic newline (`\n`) by default.
 # Change to a space (`" "`) if you want to only use spaces, e.g. as one option for an easy InDesign proof (newlines & columns might be better, though).
@@ -27,12 +27,15 @@ text = ""
 
 font = Glyphs.font
 
-for num in numerals:
-    # name = layer.parent.name
+for numr in numerals:
+    text += "H"
 
-    fraction = f"/{num}.numr/fraction/{num}.dnom"
+    for dnom in numerals:
 
-    text += pattern.replace("$1", fraction) + separator
+        fraction = f"/{numr}.numr/fraction/{dnom}.dnom"
 
+        text += pattern.replace("$1", fraction)
+
+    text += "H" + separator
 
 font.newTab(text)

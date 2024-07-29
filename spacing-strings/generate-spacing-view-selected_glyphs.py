@@ -1,8 +1,6 @@
-# MenuTitle: Make tab with bigger fraction spacing string
+# MenuTitle: Make tab with spacing string for selected glyphs
 __doc__ = """
-    A simple way to make a fraction spacing string.
-
-    Assumes name /fraction and /one.numr /two.dnom etc.
+    A simple way to make an arbitrary spacing string.
 
     Open in a code editor to adjust!
 """
@@ -14,28 +12,30 @@ __doc__ = """
 # Add "\\n" at the end of your pattern if you want your output to include newlines, e.g. for the RoboFont space center
 # pattern = "HH /$1  HOHO /$1  OO" # for zero-width combining accents
 # pattern = "nn/$1 nono/$1 oo" # lowercase only
-pattern = "H$1 H"
+pattern = "HH/$1 HOHO/$1 OO\nnn/$1 nono/$1 oo"
 
 # If you want to change the way each pattern is separated, change this. It adds a basic newline (`\n`) by default.
 # Change to a space (`" "`) if you want to only use spaces, e.g. as one option for an easy InDesign proof (newlines & columns might be better, though).
 # Change to "\\n" at the end of your pattern if you want your output to include newlines in the RoboFont space center.
 separator = "\n"
 
-numerals = "zero one two three four five six seven eight nine".split(" ")
-
-text = ""
+text = "HHHOHOHOOO\nnnnononooo\n"
 
 font = Glyphs.font
+myLayers = Glyphs.font.selectedLayers
 
-for numr in numerals:
-    text += "H"
+# The code part. This goes through selected glyphs and outputs a proofing list.
+for layer in myLayers:
+    name = layer.parent.name
 
-    for dnom in numerals:
+    if ".sc" in name:
+        smallCapPattern = (
+            "HH/$1 HOHO/$1 OO\n/H.sc /H.sc /$1 /H.sc /O.sc /H.sc /O.sc /$1 /O.sc /O.sc"
+        )
+        text += smallCapPattern.replace("$1", name) + separator
 
-        fraction = f"/{numr}.numr/fraction/{dnom}.dnom"
+    else:
+        text += pattern.replace("$1", name) + separator
 
-        text += pattern.replace("$1", fraction)
-
-    text += "H" + separator
 
 font.newTab(text)
