@@ -11,7 +11,7 @@ __doc__ = """
     Open in a code editor to adjust X/Y layer shift!
 """
 
-from GlyphsApp import Glyphs, GSPath, GSComponent
+from GlyphsApp import Glyphs, GSPath, GSComponent, GSControlLayer
 from AppKit import NSAffineTransform
 
 # Starting point for Kyrios: over 100 units, up 50 units
@@ -22,11 +22,8 @@ def copyPathsFromLayerToLayer(sourceLayer, targetLayer, keepOriginal=False):
     """Copies all paths from sourceLayer to targetLayer"""
     numberOfPathsInSource = len(sourceLayer.paths)
     numberOfPathsInTarget = len(targetLayer.paths)
-    
-    print(f"target layer {targetLayer}")
 
     if numberOfPathsInTarget != 0 and not keepOriginal:
-        print("- Deleting %i paths in target layer" % numberOfPathsInTarget)
         try:
             # GLYPHS 3
             for i in reversed(range(len(targetLayer.shapes))):
@@ -37,7 +34,7 @@ def copyPathsFromLayerToLayer(sourceLayer, targetLayer, keepOriginal=False):
             targetLayer.paths = None
 
     if numberOfPathsInSource > 0:
-        print("- Copying paths")
+        pass
         
     for thisPath in sourceLayer.paths:
         newPath = thisPath.copy()
@@ -55,17 +52,20 @@ selectedGlyphs = [
     layer for layer in Font.selectedLayers if layer.parent.name is not None
 ]
 
+selectedGlyphs = set(selectedGlyphs)
 
 for thisGlyphLayer in selectedGlyphs:
+
+    # skip any "newLine" glyphs in selection
+    if thisGlyphLayer.parent.name == "newGlyph":
+        continue
+
     try:
-        print("🔠 %s" % thisGlyph.name)
-        
+        print("🔠 %s" % thisGlyphLayer.parent.name)
 
         sourcelayer = thisGlyphLayer
         targetlayer = sourcelayer.background
         
-        print(f"sourcelayer {sourcelayer}")
-        print(f"targetlayer {targetlayer}")
 
         copyPathsFromLayerToLayer(sourcelayer, targetlayer, keepOriginal=False)
 
