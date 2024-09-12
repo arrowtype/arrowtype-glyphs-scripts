@@ -25,18 +25,13 @@ for name in selectedAccents:
         if len(layerGlyph.components) > 0:
             for component in layerGlyph.components:
                 if component.name == name:
-                    print(f"{name} {glyph.name}")
 
                     accentGlyphsDict[name].append(gname)
                     break
 
-print(accentGlyphsDict)
-
 # convert accentGlyphsDict to text
 text = ""
 for accent in accentGlyphsDict.keys():
-    text += f"/{accent} {''.join(['/'+gname for gname in accentGlyphsDict[accent]])}\n"
-
-print(text)
+    text += f"/{accent} {''.join(['/'+gname for gname in accentGlyphsDict[accent]])}\n\n"
 
 font.newTab(text)
