@@ -5,6 +5,8 @@ __doc__ = """
 
 import math
 
+from GlyphsApp import Glyphs, GSGuide
+
 font = Glyphs.font
 selectedLayer = font.selectedLayers[0]
 
