@@ -5,15 +5,22 @@ __doc__ = """
 
 	The new instances are the cross product of the GSNameParticles stored on
 	that particle instance, one list per font axis. Style names are joined in
-	font axis order. Regular, Normal, and Roman are left out of a name when
-	another particle already names the style, so "Normal Thin" becomes "Thin"
-	and "Compressed Regular" becomes "Compressed".
+	font axis order. Normal and Roman are left out of a name when another
+	particle already names the style, so "Normal Thin" becomes "Thin".
 
 	A particle with active turned off is left out of the product. If every
 	particle is inactive, the whole set is used — Glyphs omits the flag when
 	it is simply on.
 
-	Existing static instances with the same style name are left in place.
+	Weight Class and Width Class follow the OS/2 usWeightClass and usWidthClass
+	tables. With 9 or fewer particles on that axis, they are spread from
+	lightest/narrowest to heaviest/widest across the standard steps (weight
+	100–900, width 1–9). A single particle uses Normal: weight 400, width 5.
+	With more than 9, the class is the particle’s external value, or its
+	internal value when no external value is set.
+
+	Running the script removes every static instance (type 0) first, then
+	builds the set again. Variable and particle instances are kept.
 """
 
 from itertools import product
@@ -25,6 +32,14 @@ INSTANCETYPEPARTICLE = 4
 NAME_PARTICLES_KEY = "com.glyphsapp.NameParticles"
 ELIDABLE_NAMES = {"normal", "roman"}
 MAX_INSTANCES = 5000
+
+# OS/2 usWeightClass common values, lightest to heaviest.
+# https://learn.microsoft.com/en-us/typography/opentype/spec/os2#usweightclass
+STANDARD_WEIGHT_CLASSES = (100, 200, 300, 400, 500, 600, 700, 800, 900)
+# OS/2 usWidthClass, narrowest to widest. The spec’s “% of normal” counterparts
+# are 50, 62.5, 75, 87.5, 100, 112.5, 125, 150, 200.
+# https://learn.microsoft.com/en-us/typography/opentype/spec/os2#uswidthclass
+STANDARD_WIDTH_CLASSES = (1, 2, 3, 4, 5, 6, 7, 8, 9)
 
 
 class ParticleRecord:
@@ -213,10 +228,61 @@ def axis_groups(font, instance):
 	return groups
 
 
+def axis_kind(axis):
+	"""Return "weight", "width", or None for an axis that feeds an OS/2 class."""
+	tag = (getattr(axis, "axisTag", None) or "").casefold()
+	name = (getattr(axis, "name", None) or "").casefold()
+	if tag == "wght" or name == "weight":
+		return "weight"
+	if tag == "wdth" or name == "width":
+		return "width"
+	return None
+
+
+def coordinate_class(record):
+	"""OS/2 class from the user-space coordinate, or the design coordinate."""
+	value = record.internal if record.external is None else record.external
+	return int(round(float(value)))
+
+
+def table_class(position, count, table, single_value):
+	"""Spread `count` particles across the standard OS/2 steps, in axis order."""
+	if count <= 1:
+		return single_value
+	slot = int(round(position * (len(table) - 1) / float(count - 1)))
+	slot = max(0, min(len(table) - 1, slot))
+	return table[slot]
+
+
+def os2_class_for_particle(kind, position, count, record):
+	if count > len(STANDARD_WEIGHT_CLASSES):
+		return coordinate_class(record)
+	if kind == "weight":
+		return table_class(position, count, STANDARD_WEIGHT_CLASSES, 400)
+	return table_class(position, count, STANDARD_WIDTH_CLASSES, 5)
+
+
+def assign_os2_classes(groups):
+	"""Set weight_class / width_class on the particles in each matching axis."""
+	for axis, records in groups:
+		kind = axis_kind(axis)
+		if kind is None or not records:
+			continue
+		order = sorted(range(len(records)), key=lambda index: (records[index].internal, index))
+		count = len(order)
+		for position, index in enumerate(order):
+			value = os2_class_for_particle(kind, position, count, records[index])
+			if kind == "weight":
+				records[index].weight_class = value
+			else:
+				records[index].width_class = value
+
+
 def expanded_instances(groups):
 	"""Yield (style name, [(axis, record), ...], localized names) for the cross product."""
 	if not groups:
 		return
+	assign_os2_classes(groups)
 	axes = [axis for axis, _records in groups]
 	lists = [records for _axis, records in groups]
 	count = 1
@@ -237,16 +303,21 @@ def _is_particle_instance(instance):
 		return False
 
 
-def _existing_single_names(font):
-	names = set()
-	for instance in font.instances:
-		try:
-			is_single = int(instance.type) == INSTANCETYPESINGLE
-		except Exception:
-			is_single = False
-		if is_single and instance.name:
-			names.add(instance.name)
-	return names
+def _is_single_instance(instance):
+	try:
+		return int(instance.type) == INSTANCETYPESINGLE
+	except Exception:
+		return False
+
+
+def _remove_single_instances(font):
+	"""Delete every type 0 instance. Returns how many were removed."""
+	removed = 0
+	for index in reversed(range(len(font.instances))):
+		if _is_single_instance(font.instances[index]):
+			del font.instances[index]
+			removed += 1
+	return removed
 
 
 def _apply_location(instance, pairs):
@@ -268,47 +339,64 @@ def _apply_localized_names(instance, localized):
 		instance.setProperty_value_languageTag_("styleNames", name, language)
 
 
+def _apply_os2_classes(instance, pairs):
+	for _axis, record in pairs:
+		weight_class = getattr(record, "weight_class", None)
+		if weight_class is not None:
+			instance.weightClass = int(weight_class)
+		width_class = getattr(record, "width_class", None)
+		if width_class is not None:
+			instance.widthClass = int(width_class)
+
+
 def expand_font(font):
 	created = []
 	skipped = []
 	notes = []
-	existing_names = _existing_single_names(font)
-	particle_instances = [instance for instance in font.instances if _is_particle_instance(instance)]
+	particle_instances = [instance for instance in list(font.instances) if _is_particle_instance(instance)]
 
 	if not particle_instances:
 		return created, skipped, ["No particle instances (type 4) were found."]
 
+	planned = []
 	for particle_instance in particle_instances:
 		groups = axis_groups(font, particle_instance)
 		if not groups:
 			notes.append("Particle instance “%s” has no name particles." % (particle_instance.name or "particles"))
 			continue
 		try:
-			specs = list(expanded_instances(groups))
+			planned.extend(expanded_instances(groups))
 		except ValueError as error:
 			notes.append("Skipped particle instance “%s”: %s." % (particle_instance.name or "particles", error))
+
+	if not planned:
+		if not notes:
+			notes.append("No name particles were found on the particle instances.")
+		return created, skipped, notes
+
+	removed = _remove_single_instances(font)
+	notes.insert(0, "Removed %d static instance%s." % (removed, "" if removed == 1 else "s"))
+
+	seen_names = set()
+	for style_name, pairs, localized in planned:
+		if style_name in seen_names:
+			skipped.append(style_name)
 			continue
+		new_instance = GSInstance()
+		try:
+			new_instance.setType_(INSTANCETYPESINGLE)
+		except Exception:
+			pass
+		new_instance.name = style_name
+		new_instance.active = True
+		font.instances.append(new_instance)
+		_apply_location(new_instance, pairs)
+		_apply_os2_classes(new_instance, pairs)
+		if localized:
+			_apply_localized_names(new_instance, localized)
+		seen_names.add(style_name)
+		created.append((style_name, pairs))
 
-		for style_name, pairs, localized in specs:
-			if style_name in existing_names:
-				skipped.append(style_name)
-				continue
-			new_instance = GSInstance()
-			try:
-				new_instance.setType_(INSTANCETYPESINGLE)
-			except Exception:
-				pass
-			new_instance.name = style_name
-			new_instance.active = True
-			font.instances.append(new_instance)
-			_apply_location(new_instance, pairs)
-			if localized:
-				_apply_localized_names(new_instance, localized)
-			existing_names.add(style_name)
-			created.append((style_name, pairs))
-
-	if not created and not skipped and not notes:
-		notes.append("No name particles were found on the particle instances.")
 	return created, skipped, notes
 
 
@@ -320,6 +408,15 @@ def _location_label(pairs):
 			bits.append("%s=%s" % (label, _format_number(record.internal)))
 		else:
 			bits.append("%s=%s/%s" % (label, _format_number(record.internal), _format_number(record.external)))
+	classes = []
+	for _axis, record in pairs:
+		weight_class = getattr(record, "weight_class", None)
+		if weight_class is not None and not any(bit.startswith("weightClass=") for bit in classes):
+			classes.append("weightClass=%s" % weight_class)
+		width_class = getattr(record, "width_class", None)
+		if width_class is not None and not any(bit.startswith("widthClass=") for bit in classes):
+			classes.append("widthClass=%s" % width_class)
+	bits.extend(classes)
 	return ", ".join(bits)
 
 
@@ -344,7 +441,7 @@ def _report(created, skipped, notes):
 			if style_name not in seen:
 				seen.add(style_name)
 				unique_skipped.append(style_name)
-		print("  Left %d existing static instance%s in place:" % (len(unique_skipped), "" if len(unique_skipped) == 1 else "s"))
+		print("  Skipped %d duplicate style name%s:" % (len(unique_skipped), "" if len(unique_skipped) == 1 else "s"))
 		for style_name in unique_skipped:
 			print("    %s" % style_name)
 
