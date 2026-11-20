@@ -1,4 +1,4 @@
-#MenuTitle: Move shapes in selected glyphs
+#MenuTitle: [!WIP!] Move shapes in selected glyphs
 __doc__ = """
 	Move every shape in the selected layers.
 
