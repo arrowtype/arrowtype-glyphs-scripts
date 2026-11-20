@@ -7,6 +7,8 @@ __doc__ = """
     Useful for arranging anchors, accents, and more.
 """
 
+from GlyphsApp import Glyphs, GSGuide
+
 myLayers = Glyphs.font.selectedLayers
 
 for layer in myLayers:

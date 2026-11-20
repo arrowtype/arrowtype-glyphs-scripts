@@ -1,9 +1,11 @@
 #MenuTitle: Set xheight-centered guide (horizontal)
 __doc__="""
-	Add a vertical guideline in the horizontal center of the current or selected glyphs.
+	Add a horizontal guideline at half x-height of the current or selected glyphs.
 
     Useful for arranging anchors, accents, and more.
 """
+
+from GlyphsApp import Glyphs, GSGuide
 
 myLayers = Glyphs.font.selectedLayers
 
