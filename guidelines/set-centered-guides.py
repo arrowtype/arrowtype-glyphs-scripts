@@ -35,4 +35,10 @@ def setCenteredGuides(font):
 		xHeightMidGuide.name = "x-Height Middle"
 		layer.guides.append(xHeightMidGuide)
 
+		# add new guide at average middle
+		avgHeightMidGuide = Guide()
+		avgHeightMidGuide.position = (0, (layer.master.capHeight/2 + layer.master.xHeight/2) / 2)
+		avgHeightMidGuide.name = "Average Height Middle"
+		layer.guides.append(avgHeightMidGuide)
+
 setCenteredGuides(Glyphs.font)
